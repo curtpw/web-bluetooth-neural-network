@@ -1,0 +1,73 @@
+body{
+  font-family: 'Open Sans', sans-serif;
+}
+
+.intro{
+  display: block;
+  width: 90%;
+  margin: 0 auto 1rem auto;
+}
+
+h1{
+  font-weight: 400;
+}
+
+.intro a{
+  margin-top: 1rem;
+  display: block;
+}
+
+#connect{
+  box-shadow: none;
+  background: white;
+  border: 1px solid black;
+  cursor: pointer;
+}
+
+.main-container{
+  position: relative;
+  width: 90%;
+  display: block;
+  margin: 0 auto;
+  padding-top: 2rem;
+}
+
+.container{
+  width: 25%;
+  min-height: 15rem;
+  right: 0;
+  display: inline-block;
+  vertical-align: top;
+  border: 1px solid grey;
+}
+
+.pose-image{
+  display: block;
+  margin: 0 auto;
+  width: 60%;
+}
+
+canvas{
+  width: 100% !important;
+  height: 100% !important;
+}
+
+.myo-data{
+  display: inline-block;
+  width: 45%;
+  border: 1px solid black;
+  height: 60%;
+  margin-right: 2rem;
+}
+
+.myo-data ul li{
+  font-size: 14px;
+  list-style: none;
+  left: 0;
+  margin-left: 0;
+  margin-bottom: 0.5rem;
+}
+
+.myo-data ul{
+  padding-left: 1rem;
+}
