@@ -166,7 +166,6 @@ class ControllerWebBluetooth {
             return char.uuid == characteristics.commandWriteCharacteristic.uuid
         });
 
-        // Before having access to sensor, we need to indicate to the Tingle that we want to receive this data.
         return server.getPrimaryService(controlService[0].uuid)
             .then(service => {
                 console.log('getting service: ', controlService[0].name);
@@ -206,28 +205,37 @@ class ControllerWebBluetooth {
 
         let deviceData = event.target.value;
 
-    let accelerometerRoll   = (event.target.value.getUint8(0) );
-    let accelerometerPitch  = (event.target.value.getUint8(1) );
-    let accelerometerX      = (event.target.value.getUint8(10) / 100) - 1;
-    let accelerometerY      = (event.target.value.getUint8(11) / 100) - 1;
-    let accelerometerZ      = (event.target.value.getUint8(12) / 100) - 1;
+        //decompress the very crude compression on device side to fit values into BLE data packet
+    	let accelerometerX      = (event.target.value.getUint8(0) / 100) - 1;
+    	let accelerometerY      = (event.target.value.getUint8(1) / 100) - 1;
+    	let accelerometerZ      = (event.target.value.getUint8(2) / 100) - 1;
+    	let accelerometerRoll   = (event.target.value.getUint8(3) * 1.41);
+    	let accelerometerPitch  = (event.target.value.getUint8(4) * 1.41);
+    	let devicePhotosensor  	= (event.target.value.getUint8(5) * 4);
+    	let deviceTouchsensor  	= (event.target.value.getUint8(6) * 4);
 
     console.log(accelerometerRoll + " " + accelerometerPitch);
 
 
-        var data = {
-            accelerometer: {
+/*        var data = {
                 pitch: accelerometerPitch,
                 roll: accelerometerRoll,
                 x: accelerometerX,
                 y: accelerometerY,
-                z: accelerometerZ
-            }
-        }
+                z: accelerometerZ,
+                photosensor: devicePhotosensor,
+                touch: deviceTouchsensor
+        } */
 
         state = {
-            orientation: data.orientation,
-            accelerometer: data.accelerometer,
+                pitch: accelerometerPitch,
+                roll: accelerometerRoll,
+                x: accelerometerX,
+                y: accelerometerY,
+                z: accelerometerZ,
+                photosensor: devicePhotosensor,
+                touch: deviceTouchsensor
+
         }
 
         //move this out of state change 
@@ -335,14 +343,14 @@ $(document).ready(function() {
                 //load data into global array
                 sensorDataArray = new Array(12).fill(0);
 
-                sensorDataArray[0] = state.accelerometer.x.toFixed(2);
-                sensorDataArray[1] = state.accelerometer.y.toFixed(2);
-                sensorDataArray[2] = state.accelerometer.z.toFixed(2);
-                sensorDataArray[3] = state.accelerometer.pitch.toFixed(1);
-                sensorDataArray[4] = state.accelerometer.roll.toFixed(1);
+                sensorDataArray[0] = state.x.toFixed(2);
+                sensorDataArray[1] = state.y.toFixed(2);
+                sensorDataArray[2] = state.z.toFixed(2);
+                sensorDataArray[3] = state.pitch.toFixed(1);
+                sensorDataArray[4] = state.roll.toFixed(1);
 
-                sensorDataArray[5] = state.accelerometer.pitch.toFixed(1);
-                sensorDataArray[6] = state.accelerometer.roll.toFixed(1);
+                sensorDataArray[5] = state.photosensor.toFixed(1);
+                sensorDataArray[6] = state.touch.toFixed(1);
                 sensorDataArray[7] = 0;
                 sensorDataArray[8] = 0;
                 sensorDataArray[9] = 0;
@@ -350,26 +358,26 @@ $(document).ready(function() {
                 sensorDataArray[11] = timeStamp;
 
 
-                //update time series chart
+                //update time series chart with normalized values
                 var rawAccXChart = ((sensorDataArray[0] + 2) / 4);
                 var rawAccYChart = ((sensorDataArray[1] + 2) / 4);
                 var rawAccZChart = ((sensorDataArray[2] + 2) / 4);
 
-                var rawPitchChart = (sensorDataArray[5] / 400);
-                var rawRollChart = (sensorDataArray[6] / 400);
+                var rawPitchChart = (sensorDataArray[3] / 361);
+                var rawRollChart = (sensorDataArray[4] / 361);
 
-                var rawPhotoChart = rawAccZChart; //TEMPORARY
+                var rawPhotoChart = (sensorDataArray[5] / 1025); //TEMPORARY
 
 
                 //sensor values in bottom 2/3 of chart , 1/10 height each
-                rawAccXChart = (rawAccXChart / 4.5) + 7 * 0.1;
-                rawAccYChart = (rawAccYChart / 4.5) + 6 * 0.1;
-                rawAccZChart = (rawAccZChart / 4.5) + 5 * 0.1;
+                rawAccXChart = (rawAccXChart / 6) + 7 * 0.1;
+                rawAccYChart = (rawAccYChart / 6) + 6.5 * 0.1;
+                rawAccZChart = (rawAccZChart / 6) + 6 * 0.1;
 
-                rawPhotoChart = (rawPhotoChart / 4.5) + 4 * 0.1;
+                rawPhotoChart = (rawPhotoChart / 10) + 5 * 0.1;
 
-                rawPitchChart = (rawPitchChart / 7) + 3 * 0.1;
-                rawRollChart = (rawRollChart / 7) + 2 * 0.1;
+                rawPitchChart = (rawPitchChart / 3) + 3 * 0.1;
+                rawRollChart = (rawRollChart / 3) + 2 * 0.1;
 
 
                 lineAccX.append(timeStamp, rawAccXChart);
@@ -409,7 +417,7 @@ $(document).ready(function() {
     *******************************************************************************************************************/
 
     //add smoothie.js time series streaming data chart
-    var chartHeight = 200;
+    var chartHeight = 350;
     var chartWidth = $(window).width();
 
     $("#streaming-data-chart").html('<canvas id="chart-canvas" width="' + chartWidth + '" height="' + chartHeight + '"></canvas>');
@@ -430,9 +438,9 @@ $(document).ready(function() {
     streamingChart.addTimeSeries(lineAccX,  {strokeStyle: 'rgb(185, 156, 107)', lineWidth: 3 });
     streamingChart.addTimeSeries(lineAccY,  {strokeStyle: 'rgb(143, 59, 27)',   lineWidth: 3 });
     streamingChart.addTimeSeries(lineAccZ,  {strokeStyle: 'rgb(213, 117, 0)',   lineWidth: 3 });
-    streamingChart.addTimeSeries(linePitch, {strokeStyle: 'rgb(128, 128, 128)', lineWidth: 3 });
+    streamingChart.addTimeSeries(linePitch, {strokeStyle: 'rgb(128, 128, 128)', lineWidth: 4 });
     streamingChart.addTimeSeries(linePhoto,  {strokeStyle: 'rgb(206, 66, 244)', lineWidth: 3 }); 
-    streamingChart.addTimeSeries(lineRoll,  {strokeStyle: 'rgb(240, 240, 240)', lineWidth: 3 });
+    streamingChart.addTimeSeries(lineRoll,  {strokeStyle: 'rgb(240, 240, 240)', lineWidth: 4 });
     streamingChart.addTimeSeries(lineNN1,   {strokeStyle: 'rgb(72, 244, 68)',   lineWidth: 4 });
     streamingChart.addTimeSeries(lineNN2,   {strokeStyle: 'rgb(244, 66, 66)',   lineWidth: 4 });
 
@@ -459,26 +467,29 @@ $(document).ready(function() {
 
     //numerical data display
     function displayData() {
-        var objectTempElement1 =    document.getElementsByClassName('accelerometer-x-data')[0];
-        var objectTempElement2 =    document.getElementsByClassName('accelerometer-y-data')[0];
-        var objectTempElement3 =    document.getElementsByClassName('accelerometer-z-data')[0];
+        var accelerometerElement1 =    document.getElementsByClassName('accelerometer-x-data')[0];
+        var accelerometerElement2 =    document.getElementsByClassName('accelerometer-y-data')[0];
+        var accelerometerElement3 =    document.getElementsByClassName('accelerometer-z-data')[0];
         var accelerometerPitchDiv = document.getElementsByClassName('accelerometer-pitch-data')[0];
         var accelerometerRollDiv =  document.getElementsByClassName('accelerometer-roll-data')[0];
+        var photosensorRollDiv =  document.getElementsByClassName('photosensor-data')[0];
 
-        objectTempElement1.innerHTML =      sensorDataArray[0];
-        objectTempElement2.innerHTML =      sensorDataArray[1];
-        objectTempElement3.innerHTML =      sensorDataArray[2];
-        accelerometerPitchDiv.innerHTML =   sensorDataArray[5];
-        accelerometerRollDiv.innerHTML =    sensorDataArray[6];
+        accelerometerElement1.innerHTML =      	sensorDataArray[0];
+        accelerometerElement2.innerHTML =      	sensorDataArray[1];
+        accelerometerElement3.innerHTML =      	sensorDataArray[2];
+        accelerometerPitchDiv.innerHTML =  		sensorDataArray[3];
+        accelerometerRollDiv.innerHTML 	=    	sensorDataArray[4];
+        photosensorRollDiv.innerHTML 	=    	sensorDataArray[5];
     }
 
     function getSensorData() {
         if (state.accelerometer) {
-            sensorDataArray[0] = state.accelerometer.x.toFixed(2);
-            sensorDataArray[1] = state.accelerometer.y.toFixed(2);
-            sensorDataArray[2] = state.accelerometer.z.toFixed(2);
-            sensorDataArray[3] = state.accelerometer.pitch.toFixed(2);
-            sensorDataArray[4] = state.accelerometer.roll.toFixed(2);
+            sensorDataArray[0] = state.x.toFixed(2);
+            sensorDataArray[1] = state.y.toFixed(2);
+            sensorDataArray[2] = state.z.toFixed(2);
+            sensorDataArray[3] = state.pitch.toFixed(2);
+            sensorDataArray[4] = state.roll.toFixed(2);
+            sensorDataArray[5] = state.photosensor.toFixed(2);
         }
     } 
 
@@ -552,14 +563,14 @@ $(document).ready(function() {
         var displayScore;
 
         if ((selectNN == 1 && NN1NumInputs == 2) || (selectNN == 2 && NN2NumInputs == 2)) {
-            feedArray[0] = sensorDataArray[5] / 360;
-            feedArray[1] = sensorDataArray[6] / 360;
+            feedArray[0] = sensorDataArray[3] / 360;
+            feedArray[1] = sensorDataArray[4] / 360;
         }
 
         if ((selectNN == 1 && NN1NumInputs == 3) || (selectNN == 2 && NN2NumInputs == 3)) {
-            feedArray[0] = sensorDataArray[5] / 360;
-            feedArray[1] = sensorDataArray[6] / 360;
-            feedArray[2] = (sensorDataArray[0] + 2) / 4;
+            feedArray[0] = sensorDataArray[3] / 360;
+            feedArray[1] = sensorDataArray[4] / 360;
+            feedArray[2] = (sensorDataArray[5] + 2) / 4;
         }
 
         // use trained NN or loaded NN
